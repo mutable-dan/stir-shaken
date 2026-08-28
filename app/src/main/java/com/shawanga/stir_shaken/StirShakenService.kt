@@ -103,42 +103,42 @@ class StirShakenService : CallScreeningService() {
                 try { windowManager.removeView(textView) } catch (e: Exception) {}
             }
 
-            // Increased removal time to 45 seconds to outlast the ringing
+            // Increased removal time to 90 seconds to outlast the ringing
             Handler(Looper.getMainLooper()).postDelayed({
                 try { windowManager.removeView(textView) } catch (e: Exception) {}
-            }, 45000)
+            }, 90000)
         }
     }
 
-    private fun showPopup(message: String) {
-        Handler(Looper.getMainLooper()).post {
-            val windowManager = getSystemService(WINDOW_SERVICE) as WindowManager
-
-            // Setup an overlay text view
-            val textView = TextView(this).apply {
-                text = "\nSTIR/SHAKEN:\n$message\n"
-                textSize = 20f
-                setBackgroundColor(Color.parseColor("#EE000000"))
-                setTextColor(Color.WHITE)
-                gravity = Gravity.CENTER
-                setPadding(30, 30, 30, 30)
-            }
-
-            val params = WindowManager.LayoutParams(
-                WindowManager.LayoutParams.MATCH_PARENT,
-                WindowManager.LayoutParams.WRAP_CONTENT,
-                WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
-                WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON,
-                PixelFormat.TRANSLUCENT
-            )
-            params.gravity = Gravity.TOP
-
-            windowManager.addView(textView, params)
-
-            // Remove popup after 10 seconds
-            Handler(Looper.getMainLooper()).postDelayed({
-                try { windowManager.removeView(textView) } catch (e: Exception) {}
-            }, 10000)
-        }
-    }
+//    private fun showPopup(message: String) {
+//        Handler(Looper.getMainLooper()).post {
+//            val windowManager = getSystemService(WINDOW_SERVICE) as WindowManager
+//
+//            // Setup an overlay text view
+//            val textView = TextView(this).apply {
+//                text = "\nSTIR/SHAKEN:\n$message\n"
+//                textSize = 20f
+//                setBackgroundColor(Color.parseColor("#EE000000"))
+//                setTextColor(Color.WHITE)
+//                gravity = Gravity.CENTER
+//                setPadding(30, 30, 30, 30)
+//            }
+//
+//            val params = WindowManager.LayoutParams(
+//                WindowManager.LayoutParams.MATCH_PARENT,
+//                WindowManager.LayoutParams.WRAP_CONTENT,
+//                WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
+//                WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON,
+//                PixelFormat.TRANSLUCENT
+//            )
+//            params.gravity = Gravity.TOP
+//
+//            windowManager.addView(textView, params)
+//
+//            // Remove popup after 10 seconds
+//            Handler(Looper.getMainLooper()).postDelayed({
+//                try { windowManager.removeView(textView) } catch (e: Exception) {}
+//            }, 10000)
+//        }
+//    }
 }
