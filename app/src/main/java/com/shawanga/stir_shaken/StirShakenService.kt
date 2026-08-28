@@ -1,4 +1,4 @@
-package com.shawanga.stir_shaken
+package com.example.stirshakennotifier
 
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -15,32 +15,60 @@ import android.view.Gravity
 import android.view.WindowManager
 import android.widget.TextView
 import androidx.core.app.NotificationCompat
+import java.io.File
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 class StirShakenService : CallScreeningService() {
 
     override fun onScreenCall(callDetails: Call.Details) {
-        // 1. Only process incoming calls
         if (callDetails.callDirection == Call.Details.DIRECTION_INCOMING) {
             val status = callDetails.callerNumberVerificationStatus
 
-            val message = when (status) {
+            val statusString = when (status) {
                 Connection.VERIFICATION_STATUS_PASSED -> "✅ PASSED (Attestation A)"
                 Connection.VERIFICATION_STATUS_FAILED -> "❌ FAILED (Spoofed / C)"
-                Connection.VERIFICATION_STATUS_NOT_VERIFIED -> "❓ NOT VERIFIED (No Token)"
-                else -> "UNKNOWN STATUS ($status)"
+                Connection.VERIFICATION_STATUS_NOT_VERIFIED -> "❓ NOT VERIFIED"
+                else -> "UNKNOWN STATUS"
             }
 
-            // Read preferences
+            // 1. Get Phone Number & Preferences
+            val phoneNumber = callDetails.handle?.schemeSpecificPart ?: "Unknown Number"
+            val timestamp = SimpleDateFormat("MMM dd, hh:mm a", Locale.getDefault()).format(Date())
+            val logEntry = "[$timestamp] $phoneNumber\nResult: $statusString"
+
             val prefs = getSharedPreferences("AppPrefs", Context.MODE_PRIVATE)
+            val maxLogs = prefs.getInt("MAX_LOGS", 50)
+
+            // 2. Enforce limit and save with newest at the top
+            try {
+                val file = File(filesDir, "call_log.txt")
+                val existingLogs = if (file.exists()) {
+                    file.readText().split("\n\n").filter { it.isNotBlank() }
+                } else {
+                    emptyList()
+                }
+
+                // Add new entry to the front, keep only up to maxLogs
+                val updatedLogs = listOf(logEntry) + existingLogs
+                val trimmedLogs = updatedLogs.take(maxLogs)
+
+                // Rewrite file
+                file.writeText(trimmedLogs.joinToString("\n\n") + "\n\n")
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+
+            // 3. Show UI
             val usePopup = prefs.getBoolean("USE_POPUP", true)
             val useNotification = prefs.getBoolean("USE_NOTIFICATION", true)
 
-            // Trigger UI
-            if (usePopup && Settings.canDrawOverlays(this)) showPopup(message)
-            if (useNotification) showNotification(message)
+            if (usePopup && Settings.canDrawOverlays(this)) showPopup(statusString)
+            if (useNotification) showNotification(statusString)
         }
 
-        // 2. Respond to the call LAST so the service doesn't shut down prematurely
+        // 4. Respond to the call
         val response = CallResponse.Builder()
             .setDisallowCall(false)
             .setRejectCall(false)
@@ -49,7 +77,6 @@ class StirShakenService : CallScreeningService() {
             .build()
         respondToCall(callDetails, response)
     }
-
 
     private fun showNotification(message: String) {
         val channelId = "stir_shaken_channel"
@@ -84,7 +111,6 @@ class StirShakenService : CallScreeningService() {
                 setPadding(30, 30, 30, 30)
             }
 
-            // ADDED FLAG_SHOW_WHEN_LOCKED so it appears on the lock screen
             val params = WindowManager.LayoutParams(
                 WindowManager.LayoutParams.MATCH_PARENT,
                 WindowManager.LayoutParams.WRAP_CONTENT,
@@ -98,47 +124,13 @@ class StirShakenService : CallScreeningService() {
 
             windowManager.addView(textView, params)
 
-            // Let the user tap the pop-up to remove it instantly
             textView.setOnClickListener {
                 try { windowManager.removeView(textView) } catch (e: Exception) {}
             }
 
-            // Increased removal time to 90 seconds to outlast the ringing
             Handler(Looper.getMainLooper()).postDelayed({
                 try { windowManager.removeView(textView) } catch (e: Exception) {}
             }, 90000)
         }
     }
-
-//    private fun showPopup(message: String) {
-//        Handler(Looper.getMainLooper()).post {
-//            val windowManager = getSystemService(WINDOW_SERVICE) as WindowManager
-//
-//            // Setup an overlay text view
-//            val textView = TextView(this).apply {
-//                text = "\nSTIR/SHAKEN:\n$message\n"
-//                textSize = 20f
-//                setBackgroundColor(Color.parseColor("#EE000000"))
-//                setTextColor(Color.WHITE)
-//                gravity = Gravity.CENTER
-//                setPadding(30, 30, 30, 30)
-//            }
-//
-//            val params = WindowManager.LayoutParams(
-//                WindowManager.LayoutParams.MATCH_PARENT,
-//                WindowManager.LayoutParams.WRAP_CONTENT,
-//                WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
-//                WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON,
-//                PixelFormat.TRANSLUCENT
-//            )
-//            params.gravity = Gravity.TOP
-//
-//            windowManager.addView(textView, params)
-//
-//            // Remove popup after 10 seconds
-//            Handler(Looper.getMainLooper()).postDelayed({
-//                try { windowManager.removeView(textView) } catch (e: Exception) {}
-//            }, 10000)
-//        }
-//    }
 }
