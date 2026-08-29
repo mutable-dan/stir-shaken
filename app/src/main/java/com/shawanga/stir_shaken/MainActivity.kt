@@ -1,86 +1,64 @@
 package com.shawanga.stir_shaken
 
-
-import android.app.role.RoleManager
-import android.content.Context
 import android.content.Intent
-import android.net.Uri
 import android.os.Bundle
-import android.provider.Settings
 import android.widget.Button
-import android.widget.CheckBox
-import android.widget.Toast
-import androidx.activity.result.contract.ActivityResultContracts
+import android.widget.LinearLayout
+import android.widget.ScrollView
+import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
+import java.io.File
 
 class MainActivity : AppCompatActivity() {
+
+    private lateinit var logTextView: TextView
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        val layout = android.widget.LinearLayout(this).apply {
-            orientation = android.widget.LinearLayout.VERTICAL
+        val layout = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
             setPadding(50, 50, 50, 50)
         }
 
-        val btnRequestRole = Button(this).apply { text = "1. Enable Caller ID Role" }
-        val btnRequestOverlay = Button(this).apply { text = "2. Enable Pop-up Permission" }
-        val btnRequestNotif = Button(this).apply { text = "3. Enable Notifications (Android 13+)" } // NEW
+        val btnSettings = Button(this).apply { text = "Open Settings" }
 
-        val cbPopup = CheckBox(this).apply { text = "Show Pop-up on Call" }
-        val cbNotif = CheckBox(this).apply { text = "Show Notification on Call" }
+        val scrollView = ScrollView(this).apply {
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                0,
+                1.0f
+            )
+        }
 
-        layout.addView(btnRequestRole)
-        layout.addView(btnRequestOverlay)
-        layout.addView(btnRequestNotif) // NEW
-        layout.addView(cbPopup)
-        layout.addView(cbNotif)
+        logTextView = TextView(this).apply {
+            textSize = 16f
+            setPadding(0, 30, 0, 0)
+        }
+
+        scrollView.addView(logTextView)
+
+        layout.addView(btnSettings)
+        layout.addView(scrollView)
         setContentView(layout)
 
-        val prefs = getSharedPreferences("AppPrefs", Context.MODE_PRIVATE)
-        cbPopup.isChecked = prefs.getBoolean("USE_POPUP", true)
-        cbNotif.isChecked = prefs.getBoolean("USE_NOTIFICATION", true)
-
-        cbPopup.setOnCheckedChangeListener { _, isChecked ->
-            prefs.edit().putBoolean("USE_POPUP", isChecked).apply()
-        }
-        cbNotif.setOnCheckedChangeListener { _, isChecked ->
-            prefs.edit().putBoolean("USE_NOTIFICATION", isChecked).apply()
-        }
-
-        // 1. Request Call Screening Role
-        val roleLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
-            if (result.resultCode == RESULT_OK) Toast.makeText(this, "Role Granted", Toast.LENGTH_SHORT).show()
-        }
-        btnRequestRole.setOnClickListener {
-            val roleManager = getSystemService(RoleManager::class.java)
-            if (roleManager.isRoleAvailable(RoleManager.ROLE_CALL_SCREENING)) {
-                roleLauncher.launch(roleManager.createRequestRoleIntent(RoleManager.ROLE_CALL_SCREENING))
-            }
-        }
-
-        // 2. Request Overlay Permission
-        btnRequestOverlay.setOnClickListener {
-            if (!Settings.canDrawOverlays(this)) {
-                startActivity(Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:$packageName")))
-            } else {
-                Toast.makeText(this, "Overlay already granted", Toast.LENGTH_SHORT).show()
-            }
-        }
-
-        // 3. Request Notification Permission (NEW)
-        val requestPermissionLauncher = registerForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted ->
-            val msg = if (isGranted) "Notifications Granted" else "Notifications Denied"
-            Toast.makeText(this, msg, Toast.LENGTH_SHORT).show()
-        }
-        btnRequestNotif.setOnClickListener {
-            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
-                requestPermissionLauncher.launch(android.Manifest.permission.POST_NOTIFICATIONS)
-            } else {
-                Toast.makeText(this, "Not required on this Android version", Toast.LENGTH_SHORT).show()
-            }
+        btnSettings.setOnClickListener {
+            startActivity(Intent(this, SettingsActivity::class.java))
         }
     }
 
+    override fun onResume() {
+        super.onResume()
+        loadCallLog()
+    }
+
+    private fun loadCallLog() {
+        val file = File(filesDir, "call_log.txt")
+        if (file.exists()) {
+            val content = file.readText().trim()
+            logTextView.text = if (content.isEmpty()) "No previous calls logged." else content
+        } else {
+            logTextView.text = "No previous calls logged."
+        }
+    }
 }
-
-
