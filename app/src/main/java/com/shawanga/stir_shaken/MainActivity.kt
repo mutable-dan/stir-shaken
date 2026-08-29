@@ -1,4 +1,4 @@
-package com.example.stirshakennotifier
+package com.shawanga.stir_shaken
 
 import android.content.Intent
 import android.os.Bundle
@@ -7,7 +7,6 @@ import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
-import com.shawanga.stir_shaken.SettingsActivity
 import java.io.File
 
 class MainActivity : AppCompatActivity() {

@@ -1,4 +1,4 @@
-package com.example.stirshakennotifier
+package com.shawanga.stir_shaken
 
 import android.app.NotificationChannel
 import android.app.NotificationManager
