@@ -39,12 +39,12 @@ class StirShakenService : CallScreeningService() {
 
             // Extract raw detail data
             val debugDump = """
-                Raw Verification Int: $status
+                Stir/Shaken Status: $status
                 Caller Name: ${callDetails.callerDisplayName ?: "N/A"}
                 Handle URI: ${callDetails.handle}
                 Call Properties: ${callDetails.callProperties}
                 Call Capabilities: ${callDetails.callCapabilities}
-                Creation Time (ms): ${callDetails.creationTimeMillis}
+                Timestamp (ms): ${callDetails.creationTimeMillis}
             """.trimIndent()
 
             // Format with a delimiter to separate visible log from debug data
