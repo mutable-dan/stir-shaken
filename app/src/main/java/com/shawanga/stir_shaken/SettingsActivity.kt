@@ -1,5 +1,6 @@
 package com.shawanga.stir_shaken
 
+import android.app.AlertDialog
 import android.app.role.RoleManager
 import android.content.Context
 import android.content.Intent
@@ -35,7 +36,6 @@ class SettingsActivity : AppCompatActivity() {
         val cbPopup = CheckBox(this).apply { text = "Show Pop-up on Call" }
         val cbNotif = CheckBox(this).apply { text = "Show Notification on Call" }
 
-        // NEW: Log Management UI
         val maxLogsLabel = TextView(this).apply {
             text = "\nMax logs to keep:"
             setPadding(0, 30, 0, 0)
@@ -58,18 +58,12 @@ class SettingsActivity : AppCompatActivity() {
 
         val prefs = getSharedPreferences("AppPrefs", Context.MODE_PRIVATE)
 
-        // Load Current Settings
         cbPopup.isChecked = prefs.getBoolean("USE_POPUP", true)
         cbNotif.isChecked = prefs.getBoolean("USE_NOTIFICATION", true)
         maxLogsInput.setText(prefs.getInt("MAX_LOGS", 50).toString())
 
-        // Save Settings on change
-        cbPopup.setOnCheckedChangeListener { _, isChecked ->
-            prefs.edit().putBoolean("USE_POPUP", isChecked).apply()
-        }
-        cbNotif.setOnCheckedChangeListener { _, isChecked ->
-            prefs.edit().putBoolean("USE_NOTIFICATION", isChecked).apply()
-        }
+        cbPopup.setOnCheckedChangeListener { _, isChecked -> prefs.edit().putBoolean("USE_POPUP", isChecked).apply() }
+        cbNotif.setOnCheckedChangeListener { _, isChecked -> prefs.edit().putBoolean("USE_NOTIFICATION", isChecked).apply() }
 
         maxLogsInput.addTextChangedListener(object : TextWatcher {
             override fun afterTextChanged(s: Editable?) {
@@ -80,13 +74,19 @@ class SettingsActivity : AppCompatActivity() {
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
         })
 
-        // Clear Logs Action
         btnClearLog.setOnClickListener {
-            File(filesDir, "call_log.txt").delete()
-            Toast.makeText(this, "Logs cleared", Toast.LENGTH_SHORT).show()
+            AlertDialog.Builder(this)
+                .setTitle("Clear Call Log")
+                .setMessage("Are you sure you want to delete all call logs? This cannot be undone.")
+                .setPositiveButton("Yes") { _, _ ->
+                    File(filesDir, "call_log.txt").delete()
+                    Toast.makeText(this, "Logs cleared", Toast.LENGTH_SHORT).show()
+                }
+                .setNegativeButton("No", null) // Does nothing, just dismisses the dialog
+                .show()
         }
 
-        // Permissions
+        // Permissions logic
         val roleLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
             if (result.resultCode == RESULT_OK) Toast.makeText(this, "Role Granted", Toast.LENGTH_SHORT).show()
         }
@@ -96,18 +96,12 @@ class SettingsActivity : AppCompatActivity() {
                 roleLauncher.launch(roleManager.createRequestRoleIntent(RoleManager.ROLE_CALL_SCREENING))
             }
         }
-
         btnRequestOverlay.setOnClickListener {
             if (!Settings.canDrawOverlays(this)) {
                 startActivity(Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:$packageName")))
-            } else {
-                Toast.makeText(this, "Overlay already granted", Toast.LENGTH_SHORT).show()
-            }
+            } else { Toast.makeText(this, "Overlay granted", Toast.LENGTH_SHORT).show() }
         }
-
-        val requestPermissionLauncher = registerForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted ->
-            Toast.makeText(this, if (isGranted) "Notifications Granted" else "Notifications Denied", Toast.LENGTH_SHORT).show()
-        }
+        val requestPermissionLauncher = registerForActivityResult(ActivityResultContracts.RequestPermission()) {}
         btnRequestNotif.setOnClickListener {
             if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
                 requestPermissionLauncher.launch(android.Manifest.permission.POST_NOTIFICATIONS)
