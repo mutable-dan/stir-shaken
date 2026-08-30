@@ -30,45 +30,51 @@ class StirShakenService : CallScreeningService() {
                 Connection.VERIFICATION_STATUS_PASSED -> "✅ PASSED (Attestation A)"
                 Connection.VERIFICATION_STATUS_FAILED -> "❌ FAILED (Spoofed / C)"
                 Connection.VERIFICATION_STATUS_NOT_VERIFIED -> "❓ NOT VERIFIED"
-                else -> "UNKNOWN STATUS"
+                else -> "UNKNOWN STATUS ($status)"
             }
 
-            // 1. Get Phone Number & Preferences
+            // Extract normal data
             val phoneNumber = callDetails.handle?.schemeSpecificPart ?: "Unknown Number"
             val timestamp = SimpleDateFormat("MMM dd, hh:mm a", Locale.getDefault()).format(Date())
-            val logEntry = "[$timestamp] $phoneNumber\nResult: $statusString"
+
+            // Extract raw detail data
+            val debugDump = """
+                Stir/Shaken Status: $status
+                Caller Name: ${callDetails.callerDisplayName ?: "N/A"}
+                Handle URI: ${callDetails.handle}
+                Call Properties: ${callDetails.callProperties}
+                Call Capabilities: ${callDetails.callCapabilities}
+                Timestamp (ms): ${callDetails.creationTimeMillis}
+            """.trimIndent()
+
+            // Format with a delimiter to separate visible log from debug data
+            val logEntry = "[$timestamp] $phoneNumber\nResult: $statusString\n==DEBUG==\n$debugDump"
 
             val prefs = getSharedPreferences("AppPrefs", Context.MODE_PRIVATE)
             val maxLogs = prefs.getInt("MAX_LOGS", 50)
 
-            // 2. Enforce limit and save with newest at the top
+            // Save to file using ==ENTRY== as the separator between different calls
             try {
                 val file = File(filesDir, "call_log.txt")
                 val existingLogs = if (file.exists()) {
-                    file.readText().split("\n\n").filter { it.isNotBlank() }
+                    file.readText().split("==ENTRY==").filter { it.isNotBlank() }
                 } else {
                     emptyList()
                 }
 
-                // Add new entry to the front, keep only up to maxLogs
                 val updatedLogs = listOf(logEntry) + existingLogs
                 val trimmedLogs = updatedLogs.take(maxLogs)
 
-                // Rewrite file
-                file.writeText(trimmedLogs.joinToString("\n\n") + "\n\n")
+                file.writeText(trimmedLogs.joinToString("==ENTRY=="))
             } catch (e: Exception) {
                 e.printStackTrace()
             }
 
-            // 3. Show UI
-            val usePopup = prefs.getBoolean("USE_POPUP", true)
-            val useNotification = prefs.getBoolean("USE_NOTIFICATION", true)
-
-            if (usePopup && Settings.canDrawOverlays(this)) showPopup(statusString)
-            if (useNotification) showNotification(statusString)
+            // UI Triggers
+            if (prefs.getBoolean("USE_POPUP", true) && Settings.canDrawOverlays(this)) showPopup(statusString)
+            if (prefs.getBoolean("USE_NOTIFICATION", true)) showNotification(statusString)
         }
 
-        // 4. Respond to the call
         val response = CallResponse.Builder()
             .setDisallowCall(false)
             .setRejectCall(false)
